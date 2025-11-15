@@ -1,6 +1,7 @@
 package com.ptsmods.fireball;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.FloatArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
@@ -23,22 +24,25 @@ public final class FireballMod {
     private static void registerFireballCommand(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("fireball")
                 .requires(cs -> cs.hasPermission(2))
-                .executes(ctx -> execute(ctx, 0))
+                .executes(ctx -> execute(ctx, 0, 1f))
                 .then(Commands.argument("power", IntegerArgumentType.integer(0))
-                        .executes(ctx -> execute(ctx, IntegerArgumentType.getInteger(ctx, "power"))))
+                        .executes(ctx -> execute(ctx, IntegerArgumentType.getInteger(ctx, "power"), 1f))
+                        .then(Commands.argument("speed", FloatArgumentType.floatArg(0f))
+                                .executes(ctx -> execute(ctx, IntegerArgumentType.getInteger(ctx, "power"),
+                                        FloatArgumentType.getFloat(ctx, "speed")))))
         );
     }
 
-    private static int execute(CommandContext<CommandSourceStack> ctx, int power) throws CommandSyntaxException {
+    private static int execute(CommandContext<CommandSourceStack> ctx, int power, float speed) throws CommandSyntaxException {
         CommandSourceStack source = ctx.getSource();
         ServerLevel level = source.getLevel();
         Vec3 pos = source.getPosition();
+        Vec3 rot = Vec3.directionFromRotation(source.getRotation());
+
         ServerPlayer player = source.getPlayerOrException();
-        Vec3 forward = player.getForward();
+        pos = pos.add(0, player.getEyeHeight(), 0).add(rot.scale(0.1));
 
-        pos = pos.add(0, player.getEyeHeight(), 0);
-
-        Vec3 velocity = forward.scale(2);
+        Vec3 velocity = rot.scale(2 * speed);
         Vec3 acceleration = velocity.scale(1 / 19f);
 
         // (x + y) * 0.95 = x
